@@ -1,18 +1,18 @@
 from pyControl4.account import C4Account
 from pyControl4.director import C4Director
 from pyControl4.light import C4Light
+
 import asyncio
 import dotenv
 import os
-import time
-import random
+import json
 
 bedroom_controls = {
     'lights': 80,
     'bed_lights': 83,
     'sink_lights': 86,
-    # 'shower_lights': 89,
-    # 'shower_fan': 92,
+    #  'shower_lights': 89,
+    #  'shower_fan': 92,
 }
 
 dotenv.load_dotenv()
@@ -26,19 +26,13 @@ asyncio.run(account.getAccountBearerToken())
 accountControllers = asyncio.run(account.getAccountControllers())
 directorBearerToken = asyncio.run(account.getDirectorBearerToken(
     accountControllers["controllerCommonName"]))["token"]
-
 director = C4Director(ip, directorBearerToken)
 
-lights = {}
-for [key, value] in bedroom_controls.items():
-    lights[key] = C4Light(director, value)
+def get_lights():
+    items = json.loads(asyncio.run(director.getAllItemInfo()))
+    lights = [C4Light(director, item["id"]) for item in items if ("categories" in item.keys() and "light" in item["categories"])]
+    for light in lights:
+        light["current_state"] = asyncio.run(light.getstate())
+    return lights
 
-# for i in range(10):
-#     for [key, value] in lights.items():
-#         asyncio.run(value.rampToLevel(random.randint(0, 100), 100))
-#     time.sleep(1)
-
-# for [key, value] in lights.items():
-#     asyncio.run(value.rampToLevel(0, 100))
-
-asyncio.run(lights['lights'].rampToLevel(100, 100))
+print(get_lights())
